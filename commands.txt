@@ -21,8 +21,7 @@ SELECT * FROM jokes LIMIT 10;
 \q
 
 
-
-DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=mysecretpassword DB_NAME=jokes_db go test -v -coverprofile=coverage.out
+go test -v -coverprofile=coverage.out
 go tool cover -html=coverage.out
 
 Show total % in terminal	-  go test -cover

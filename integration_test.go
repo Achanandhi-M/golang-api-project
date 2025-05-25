@@ -1,39 +1,37 @@
-// integration_test.go
 package main
 
 import (
 	"database/sql"
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-func TestIntegrationJokeHandler_InsertsIntoDB(t *testing.T) {
-	// 1. Ensure env vars match your Docker Compose
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", "5432")
-	os.Setenv("DB_USER", "postgres")
-	os.Setenv("DB_PASSWORD", "mysecretpassword")
-	os.Setenv("DB_NAME", "jokes_db")
+func TestIntegration_JokeHandler_InsertsIntoDB(t *testing.T) {
+	// Load environment variables from .env file
+	_ = godotenv.Load(".env")
 
-	// 2. Open a fresh DB connection
-	dsn := "host=localhost port=5432 user=postgres password=mysecretpassword dbname=jokes_db sslmode=disable"
+	// Connect to Postgres using env vars
+	dsn := "host=%s port=%s user=%s password=%s dbname=%s sslmode=disable"
+	dsn = formatDSNFromEnv(dsn)
+
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		t.Fatalf("db open: %v", err)
+		t.Fatalf("DB open error: %v", err)
 	}
 	defer db.Close()
 
-	// 3. Count rows before
+	// Count jokes before request
 	var before int
-	if err := db.QueryRow("SELECT count(*) FROM jokes").Scan(&before); err != nil {
-		t.Fatalf("count before: %v", err)
+	if err := db.QueryRow("SELECT COUNT(*) FROM jokes").Scan(&before); err != nil {
+		t.Fatalf("Count before insert: %v", err)
 	}
 
-	// 4. Call the handler via HTTP
+	// Call /joke API
 	srv := setupServer()
 	defer srv.Close()
 
@@ -41,23 +39,29 @@ func TestIntegrationJokeHandler_InsertsIntoDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /joke error: %v", err)
 	}
-	res.Body.Close()
+	defer res.Body.Close()
+
 	if res.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 OK, got %d", res.StatusCode)
+		t.Fatalf("Expected 200 OK, got %d", res.StatusCode)
 	}
 
-	// 5. Decode and sanity-check the payload
-	var j Joke
-	if err := json.NewDecoder(res.Body).Decode(&j); err != nil {
-		// Note: in your real code you might buffer the body before closing.
-	}
-
-	// 6. Count rows after
+	// Count jokes after insert
 	var after int
-	if err := db.QueryRow("SELECT count(*) FROM jokes").Scan(&after); err != nil {
-		t.Fatalf("count after: %v", err)
+	if err := db.QueryRow("SELECT COUNT(*) FROM jokes").Scan(&after); err != nil {
+		t.Fatalf("Count after insert: %v", err)
 	}
 	if after != before+1 {
-		t.Errorf("expected row count to increase by 1 (before=%d, after=%d)", before, after)
+		t.Errorf("Expected row count to increase by 1 (before=%d, after=%d)", before, after)
 	}
+}
+
+// Helper to format DSN using env vars
+func formatDSNFromEnv(template string) string {
+	return fmt.Sprintf(template,
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+	)
 }

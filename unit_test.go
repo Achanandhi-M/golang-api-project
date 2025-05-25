@@ -7,47 +7,51 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
-// setupServer spins up only the memeHandler.
+// setupServer loads DB and mounts routes to simulate API server
 func setupServer() *httptest.Server {
+	_ = godotenv.Load(".env") // load env automatically for tests
+	setupDB()                 // connect and migrate DB
 	mux := http.NewServeMux()
 	mux.HandleFunc("/meme", memeHandler)
 	mux.HandleFunc("/joke", jokeHandler)
 	return httptest.NewServer(mux)
 }
 
-func TestUnitMemeHandler_StatusAndHTML(t *testing.T) {
+// TestUnit_MemeHandler_ValidHTML ensures /meme returns a proper HTML with an <img> tag
+func TestUnit_MemeHandler_ValidHTML(t *testing.T) {
 	srv := setupServer()
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/meme")
 	if err != nil {
-		t.Fatalf("GET /meme error: %v", err)
+		t.Fatalf("GET /meme failed: %v", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 OK, got %d", res.StatusCode)
+		t.Errorf("Expected 200 OK, got %d", res.StatusCode)
 	}
 	if ct := res.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
-		t.Errorf("expected HTML content, got %s", ct)
+		t.Errorf("Expected HTML content, got %s", ct)
 	}
 
 	body, _ := io.ReadAll(res.Body)
 	if !strings.Contains(string(body), "<img") {
-		t.Errorf("expected an <img> tag in response HTML")
+		t.Errorf("Expected an <img> tag in the response")
 	}
 }
 
-func TestUnitMemeHandler_StructDecode(t *testing.T) {
-	// If you want to inspect the JSON from Meme-API directly, you could:
+// TestUnit_Meme_StructJSON verifies that our Meme struct can marshal properly (pure unit test)
+func TestUnit_Meme_StructJSON(t *testing.T) {
 	type Meme struct {
 		Title   string `json:"title"`
 		URL     string `json:"url"`
 		PostURL string `json:"postLink"`
 	}
-	// But here we trust our handler template. This is just an example.
 	_, err := json.Marshal(Meme{Title: "x", URL: "y", PostURL: "z"})
 	if err != nil {
 		t.Fatal("JSON marshal should not fail:", err)

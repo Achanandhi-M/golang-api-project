@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -29,8 +30,9 @@ type Meme struct {
 
 var db *sql.DB
 
-func init() {
-	// build DSN from env
+func setupDB() {
+	_ = godotenv.Load(".env") // loads from .env file silently
+
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"),
@@ -44,29 +46,27 @@ func init() {
 		log.Fatalf("DB open: %v", err)
 	}
 
-	// wait for Postgres to be ready
 	for i := 0; i < 10; i++ {
 		if err = db.Ping(); err == nil {
 			break
 		}
-		log.Printf("Waiting for DB… (%d/10)", i+1)
+		log.Printf("Waiting for DB... (%d/10)", i+1)
 		time.Sleep(2 * time.Second)
 	}
 	if err != nil {
 		log.Fatalf("DB never ready: %v", err)
 	}
 
-	// auto-migrate
 	_, err = db.Exec(`
-    CREATE TABLE IF NOT EXISTS jokes (
-      id SERIAL PRIMARY KEY,
-      category TEXT,
-      type TEXT,
-      joke TEXT,
-      setup TEXT,
-      delivery TEXT
-    );
-  `)
+		CREATE TABLE IF NOT EXISTS jokes (
+			id SERIAL PRIMARY KEY,
+			category TEXT,
+			type TEXT,
+			joke TEXT,
+			setup TEXT,
+			delivery TEXT
+		);
+	`)
 	if err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
@@ -122,26 +122,26 @@ func memeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const tpl = `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head><meta charset="UTF-8"><title>{{ .Title }}</title></head>
-  <body style="text-align:center;font-family:sans-serif">
-    <h1>{{ .Title }}</h1>
-    <p><a href="{{ .PostURL }}">View on Reddit</a></p>
-    <img src="{{ .URL }}" alt="{{ .Title }}" style="max-width:90%;height:auto"/>
-  </body>
-  </html>
-  `
-	t := template.Must(template.New("meme").Parse(tpl))
+	t := template.Must(template.New("meme").Parse(`
+		<!DOCTYPE html>
+		<html lang="en">
+		<head><meta charset="UTF-8"><title>{{ .Title }}</title></head>
+		<body style="text-align:center;font-family:sans-serif">
+			<h1>{{ .Title }}</h1>
+			<p><a href="{{ .PostURL }}">View on Reddit</a></p>
+			<img src="{{ .URL }}" alt="{{ .Title }}" style="max-width:90%;height:auto"/>
+		</body>
+		</html>
+	`))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	t.Execute(w, m)
 }
 
 func main() {
+	setupDB()
 	http.HandleFunc("/joke", jokeHandler)
 	http.HandleFunc("/meme", memeHandler)
 	addr := ":8080"
-	log.Printf("Listening on http://localhost%s …", addr)
+	log.Printf("Listening on http://localhost%s ...", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
