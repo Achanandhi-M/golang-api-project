@@ -1,0 +1,30 @@
+docker-compose up --build
+
+http://localhost:8080/joke → fetch & save a joke, returns JSON
+
+http://localhost:8080/meme → fetch & display a random programming meme
+
+
+To view the data inside container
+
+docker-compose exec postgres psql -U postgres -d jokes_db (or)
+
+docker exec -it <container-name> psql -U postgres -d jokes_db
+
+-- List tables
+\dt
+
+-- See the first 10 jokes
+SELECT * FROM jokes LIMIT 10;
+
+-- Quit
+\q
+
+
+
+DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=mysecretpassword DB_NAME=jokes_db go test -v -coverprofile=coverage.out
+go tool cover -html=coverage.out
+
+Show total % in terminal	-  go test -cover
+Show HTML view of coverage	-  go test -coverprofile=coverage.out && go tool cover -html=coverage.out
+Show function-by-function % -  go tool cover -func=coverage.out
