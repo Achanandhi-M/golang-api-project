@@ -1,7 +1,3 @@
-Here's the updated README with the formatting improved and the text simplified for beginners to better understand what the project does and how to set it up:
-
----
-
 # Joke and Meme API Service
 
 ### What is this project?
@@ -74,7 +70,7 @@ To interact with the PostgreSQL database, you can run commands inside the databa
 1. Open a terminal and run the following command to access the PostgreSQL container:
 
    ```bash
-   docker-compose exec postgres psql -U postgres -d jokes_db
+   docker-compose exec -it <container-name>  psql -U postgres -d jokes_db
    ```
 
 2. Inside the database, you can run the following commands:
