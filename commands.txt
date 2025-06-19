@@ -1,0 +1,21 @@
+docker-compose up --build
+
+http://localhost:8080/joke → fetch & save a joke, returns JSON
+
+http://localhost:8080/meme → fetch & display a random programming meme
+
+
+To view the data inside container
+
+docker-compose exec postgres psql -U postgres -d jokes_db (or)
+
+docker exec -it <container-name> psql -U postgres -d jokes_db
+
+-- List tables
+\dt
+
+-- See the first 10 jokes
+SELECT * FROM jokes;
+
+-- Quit
+\q
